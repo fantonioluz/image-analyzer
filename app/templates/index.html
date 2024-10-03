@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analisador de Imagens</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background-color: #1a202c;
+      color: #e2e8f0;
+    }
+    .bg-dark {
+      background-color: #2d3748;
+    }
+    .bg-dark-light {
+      background-color: #4a5568;
+    }
+    .text-light {
+      color: #e2e8f0;
+    }
+  </style>
+</head>
+<body class="p-6">
+  <div class="max-w-4xl mx-auto bg-dark shadow-md rounded-lg p-8">
+    <h1 class="text-3xl font-bold mb-6 text-light">Analisador de Imagens</h1>
+    
+    <!-- Formulário para enviar múltiplas imagens -->
+    <div class="mb-4">
+      <label for="images" class="block text-lg font-medium text-light mb-2">Envie as Imagens (Agrupar com a mesma estrutura de lotes)</label>
+      <input type="file" id="images" name="images[]" multiple class="border p-2 w-full text-gray-700 bg-dark-light rounded-lg">
+    </div>
+
+    <!-- Inputs para detalhes dos lotes -->
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <div>
+        <label for="vertical-lots" class="block text-lg font-medium text-light mb-2">Número de Lotes (Vertical)</label>
+        <input type="number" id="vertical-lots" class="border p-2 w-full bg-dark-light rounded-lg" placeholder="Insira os lotes verticais">
+      </div>
+      <div>
+        <label for="horizontal-lots" class="block text-lg font-medium text-light mb-2">Número de Lotes (Horizontal)</label>
+        <input type="number" id="horizontal-lots" class="border p-2 w-full bg-dark-light rounded-lg" placeholder="Insira os lotes horizontais">
+      </div>
+    </div>
+
+    <!-- Botão para enviar -->
+    <div class="flex justify-end">
+      <button class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg" onclick="groupImages()">Analisar Imagens</button>
+    </div>
+
+    <!-- Área de pré-visualização das imagens selecionadas -->
+    <div class="mt-6">
+      <h2 class="text-xl font-semibold mb-4 text-light">Imagens Selecionadas</h2>
+      <div id="image-preview" class="grid grid-cols-3 gap-4"></div>
+    </div>
+
+    <!-- Área de resultados -->
+    <div class="mt-6">
+      <h2 class="text-xl font-semibold mb-4 text-light">Resultados</h2>
+      <div id="results" class="text-lg text-light"></div>
+    </div>
+  </div>
+
+  <script>
+    // Pré-visualizar imagens após seleção
+    const imageInput = document.getElementById('images');
+    const imagePreview = document.getElementById('image-preview');
+
+    imageInput.addEventListener('change', function(event) {
+      imagePreview.innerHTML = '';
+      const files = event.target.files;
+      
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const imgElement = document.createElement('img');
+          imgElement.src = e.target.result;
+          imgElement.classList.add('w-full', 'h-auto', 'rounded-lg', 'shadow-lg');
+          imagePreview.appendChild(imgElement);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    async function groupImages() {
+      const verticalLots = document.getElementById('vertical-lots').value;
+      const horizontalLots = document.getElementById('horizontal-lots').value;
+      
+      const files = imageInput.files;
+      if (files.length === 0) {
+        document.getElementById('results').textContent = 'Por favor, selecione as imagens.';
+        return;
+      }
+
+      if (!verticalLots || !horizontalLots) {
+        document.getElementById('results').textContent = 'Por favor, insira o número de lotes verticais e horizontais.';
+        return;
+      }
+
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append('images', files[i]);
+      }
+      formData.append('vertical', verticalLots);
+      formData.append('horizontal', horizontalLots);
+
+      document.getElementById('results').textContent = 'Processando...';
+
+      try {
+        const response = await fetch('/analyze', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erro na análise das imagens.');
+        }
+
+        const result = await response.json();
+        document.getElementById('results').textContent = `Lotes Ocupados: ${result.lotes_ocupados}, Lotes Vazios: ${result.lotes_vazios}`;
+      } catch (error) {
+        document.getElementById('results').textContent = 'Erro ao processar as imagens.';
+        console.error('Erro:', error);
+      }
+    }
+  </script>
+</body>
+</html>
